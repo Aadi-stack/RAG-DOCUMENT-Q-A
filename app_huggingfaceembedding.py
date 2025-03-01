@@ -52,6 +52,12 @@ def create_vector_embedding():
         
         # Now create the FAISS index from the embeddings
         st.session_state.vectors = FAISS.from_texts(documents_text, embeddings)
+        
+        # Debugging output: Confirm the vector store has been created
+        st.write("Vector store created:", st.session_state.vectors)
+        st.session_state.vector_initialized = True
+    else:
+        st.session_state.vector_initialized = False
 
 # User input and button for document embedding
 user_prompt = st.text_input("Enter your query from the research paper")
@@ -84,4 +90,4 @@ if user_prompt:
                 st.write('------------------------')
 
 # Optional: Display the session state for debugging purposes (remove in production)
-st.write(st.session_state)  # This will help you debug session state values
+st.write("Session state:", st.session_state)  # This will help you debug session state values
