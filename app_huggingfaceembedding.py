@@ -38,6 +38,7 @@ prompt = ChatPromptTemplate.from_template("""
 st.title("RAG Document Q&A with Hugging Face Embeddings")
 
 def create_vector_embedding():
+    # Initialize the vector store in session state if not already initialized
     if "vectors" not in st.session_state:
         st.session_state.embeddings = embeddings
         st.session_state.loader = PyPDFDirectoryLoader("research_papers")  # Data Ingestion step
@@ -61,20 +62,26 @@ if st.button("Document Embedding"):
 
 # Processing the user's query
 if user_prompt:
-    # Corrected call to create_stuff_documents_chain with llm and prompt
-    document_chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
-    
-    retriever = st.session_state.vectors.as_retriever()
-    retrieval_chain = create_retrieval_chain(retriever, document_chain)
+    if 'vectors' not in st.session_state or st.session_state.vectors is None:
+        st.error("Vector database has not been initialized yet. Please click the 'Document Embedding' button.")
+    else:
+        # Corrected call to create_stuff_documents_chain with llm and prompt
+        document_chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
 
-    start = time.process_time()
-    response = retrieval_chain.invoke({'input': user_prompt})
-    st.write(f"Response time: {time.process_time()-start}")
+        retriever = st.session_state.vectors.as_retriever()
+        retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-    st.write(response['answer'])
+        start = time.process_time()
+        response = retrieval_chain.invoke({'input': user_prompt})
+        st.write(f"Response time: {time.process_time()-start}")
 
-    # Display document similarity search results
-    with st.expander("Document Similarity Search"):
-        for i, doc in enumerate(response['context']):
-            st.write(doc.page_content)
-            st.write('------------------------')
+        st.write(response['answer'])
+
+        # Display document similarity search results
+        with st.expander("Document Similarity Search"):
+            for i, doc in enumerate(response['context']):
+                st.write(doc.page_content)
+                st.write('------------------------')
+
+# Optional: Display the session state for debugging purposes (remove in production)
+st.write(st.session_state)  # This will help you debug session state values
