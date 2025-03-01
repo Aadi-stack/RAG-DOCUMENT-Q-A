@@ -3,12 +3,13 @@ import os
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from dotenv import load_dotenv
 import time
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,18 +20,19 @@ os.environ['HF_TOKEN'] = os.getenv("HF_TOKEN")
 # Set up Hugging Face embeddings
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-prompt=ChatPromptTemplate.from_template(
-    """
+# Set up Groq API key and LLM model
+groq_api_key = os.getenv("GROQ_API_KEY")
+llm = ChatGroq(groq_api_key=groq_api_key, model_name="Llama3-8b-8192")
+
+# Define the prompt template for the question-answering
+prompt = ChatPromptTemplate.from_template("""
     Answer the questions based on the provided context only.
-    Please provide the most accurate respone based on the question
+    Please provide the most accurate response based on the question.
     <context>
     {context}
     <context>
-    Question:{input}
-
-    """
-
-)
+    Question: {input}
+""")
 
 # Streamlit app title
 st.title("RAG Document Q&A with Hugging Face Embeddings")
@@ -42,7 +44,13 @@ def create_vector_embedding():
         st.session_state.docs = st.session_state.loader.load()  # Document Loading
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs[:50])
-        st.session_state.vectors = FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)
+        
+        # Embedding the documents
+        documents_text = [doc.page_content for doc in st.session_state.final_documents]  # Get the text from documents
+        document_embeddings = embeddings.embed_documents(documents_text)  # Generate embeddings for documents
+        
+        # Now create the FAISS index from the embeddings
+        st.session_state.vectors = FAISS.from_texts(documents_text, embeddings)
 
 # User input and button for document embedding
 user_prompt = st.text_input("Enter your query from the research paper")
@@ -53,7 +61,9 @@ if st.button("Document Embedding"):
 
 # Processing the user's query
 if user_prompt:
-    document_chain = create_stuff_documents_chain(embeddings, prompt)
+    # Corrected call to create_stuff_documents_chain with llm and prompt
+    document_chain = create_stuff_documents_chain(llm=llm, prompt=prompt)
+    
     retriever = st.session_state.vectors.as_retriever()
     retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
