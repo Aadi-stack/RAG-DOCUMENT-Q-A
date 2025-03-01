@@ -18,6 +18,19 @@ os.environ['HF_TOKEN'] = os.getenv("HF_TOKEN")
 # Set up Hugging Face embeddings
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
+prompt=ChatPromptTemplate.from_template(
+    """
+    Answer the questions based on the provided context only.
+    Please provide the most accurate respone based on the question
+    <context>
+    {context}
+    <context>
+    Question:{input}
+
+    """
+
+)
+
 # Streamlit app title
 st.title("RAG Document Q&A with Hugging Face Embeddings")
 
